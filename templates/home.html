@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة إيدو ميدو هب - EduMido Hub</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <style>
+        body { 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
+            min-height: 100vh; 
+            color: white; 
+            font-family: sans-serif; 
+        }
+        .box { 
+            background: rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(10px); 
+            border-radius: 20px; 
+            padding: 40px; 
+            margin-top: 50px; 
+            margin-bottom: 50px;
+        }
+        .custom-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 25px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+<div class="container text-center">
+    <div class="box shadow-lg">
+        <!-- اسم المنصة بالعربي والإنجليزي في الواجهة -->
+        <h1 class="display-4 fw-bold mb-2">مرحباً بك في إيدو ميدو هب (EduMido Hub) 🎓</h1>
+        <p class="fs-5 mb-4">المنصة التعليمية المتكاملة للفصول الافتراضية والسبورة التفاعلية</p>
+        
+        <!-- أزرار الدخول الأساسية -->
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="/login/teacher" class="btn btn-light btn-lg px-4 fs-5 text-primary fw-bold">دخول المعلم 👨‍🏫</a>
+            <a href="/login/student" class="btn btn-outline-light btn-lg px-4 fs-5 fw-bold">دخول الطالب 👨‍🎓</a>
+        </div>
+
+        <!-- قسم فوري والدفع السريع -->
+        <div class="custom-card">
+            <h4 class="text-warning mb-3">💳 قسم فوري والدفع السريع</h4>
+            <p class="text-light small mb-3">اختر صفك الدراسي وأدخل بياناتك للانتقال لرقم تحويل الاشتراك:</p>
+            
+            <div class="mb-3">
+                <input type="text" id="studentName" class="form-control bg-dark text-white border-secondary mb-2" placeholder="الاسم الثلاثي">
+                <input type="text" id="senderPhone" class="form-control bg-dark text-white border-secondary mb-2" placeholder="رقم الموبايل المحول منه">
+                
+                <!-- قائمة اختيار الصف الدراسي -->
+                <select id="studentGrade" class="form-control bg-dark text-white border-secondary mb-3">
+                    <option value="" disabled selected>اختر الصف الدراسي</option>
+                    <option value="الرابع الابتدائي">الرابع الابتدائي</option>
+                    <option value="الخامس الابتدائي">الخامس الابتدائي</option>
+                    <option value="السادس الابتدائي">السادس الابتدائي</option>
+                    <option value="الأول الإعدادي">الأول الإعدادي</option>
+                    <option value="الثاني الإعدادي">الثاني الإعدادي</option>
+                    <option value="الثالث الإعدادي">الثالث الإعدادي</option>
+                    <option value="الأول الثانوي">الأول الثانوي</option>
+                    <option value="الثاني الثانوي">الثاني الثانوي</option>
+                    <option value="الثالث الثانوي">الثالث الثانوي</option>
+                </select>
+
+                <button class="btn btn-warning w-100 fw-bold text-dark" onclick="showFawryNumber()">التالي</button>
+            </div>
+
+            <!-- مكان ظهور رقم التحويل -->
+            <div id="paymentResult" class="d-none mt-3 p-3 bg-dark border border-warning rounded text-center">
+                <p class="text-light mb-1">الطالب: <span id="displayName" class="text-warning fw-bold"></span></p>
+                <p class="text-light mb-2">الصف: <span id="displayGrade" class="text-info fw-bold"></span></p>
+                <p class="text-light mb-2">قم بتحويل المبلغ على الرقم التالي:</p>
+                <h3 class="text-success fw-bold mb-3" style="direction: ltr;">01114631394</h3>
+                <p class="text-info small mb-3">بعد إتمام التحويل، اضغط الزر أدناه لإرسال سكرين شوت التحويل لدعم التليجرام.</p>
+                <a href="https://t.me/MIDO_7_7_M" target="_blank" class="btn btn-info w-100 fw-bold text-white">📸 إرسال السكرين للدعم الفني</a>
+            </div>
+        </div>
+
+        <!-- قسم الشكاوي والمقترحات (التواصل مع الدعم الفني) -->
+        <div class="custom-card" style="border-color: #0ea5e9;">
+            <h4 class="text-info mb-3">📥 الشكاوي والمقترحات</h4>
+            <p class="text-light small mb-3">هل لديك اقتراح لتطوير المنصة أو تواجه شكوى معينة؟ أرسلها لنا أو تواصل مباشرة مع الدعم الفني.</p>
+            
+            <div class="mb-3">
+                <textarea id="complaintText" class="form-control bg-dark text-white border-secondary mb-3" rows="3" placeholder="اكتب شكواك أو مقترحك هنا..."></textarea>
+                <button class="btn btn-primary w-100 fw-bold mb-3" onclick="submitComplaint()">إرسال المقترح / الشكوى</button>
+            </div>
+
+            <a href="https://t.me/MIDO_7_7_M" target="_blank" class="btn btn-info w-100 fw-bold text-white d-flex justify-content-center align-items: center gap-2">
+                <span>💬 تواصل مباشر مع الدعم الفني عبر تليجرام</span>
+            </a>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function showFawryNumber() {
+        const name = document.getElementById('studentName').value.trim();
+        const phone = document.getElementById('senderPhone').value.trim();
+        const grade = document.getElementById('studentGrade').value;
+
+        if(!name || !phone || !grade) {
+            alert("يرجى إكمال جميع البيانات (الاسم، الرقم، واختيار الصف الدراسي) أولاً!");
+            return;
+        }
+
+        document.getElementById('displayName').innerText = name;
+        document.getElementById('displayGrade').innerText = grade;
+        document.getElementById('paymentResult').classList.remove('d-none');
+    }
+
+    function submitComplaint() {
+        const text = document.getElementById('complaintText').value;
+        if(!text.trim()) {
+            alert("يرجى كتابة الشكوى أو المقترح أولاً قبل الإرسال!");
+            return;
+        }
+        alert("شكراً لك! تم إرسال شكواك/مقترحك بنجاح للإدارة.");
+        document.getElementById('complaintText').value = "";
+    }
+</script>
+</body>
+</html>
