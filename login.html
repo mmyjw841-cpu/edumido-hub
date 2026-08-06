@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - {{ role_name }} | إيدو ميدو هب</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 450px;
+            border-radius: 16px;
+            background: rgba(15, 23, 42, 0.85) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .instructions-box {
+            font-size: 0.85rem;
+            background-color: rgba(30, 41, 59, 0.9);
+            border-right: 4px solid #38bdf8;
+            border-radius: 6px;
+            color: #cbd5e1;
+        }
+        footer {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .form-control, .form-select {
+            background-color: #0f172a !important;
+            color: #fff !important;
+            border-color: #475569 !important;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25);
+        }
+    </style>
+</head>
+<body class="d-flex flex-column align-items-center justify-content-center vh-100 p-3">
+
+    <!-- كارت تسجيل الدخول -->
+    <div class="card p-4 shadow-lg login-card">
+        <h4 class="text-center mb-3 text-info fw-bold">دخول {{ role_name }} 🔑</h4>
+        
+        <form action="/login/{{ role }}" method="POST">
+            <input type="text" name="name" class="form-control mb-3" placeholder="الاسم الكامل" required>
+            <input type="tel" name="phone" class="form-control mb-3" placeholder="رقم الهاتف" required>
+
+            {% if role == 'teacher' %}
+            <select name="subject" class="form-select mb-3" required>
+                <option value="" disabled selected>اختر مادتك الدراسية</option>
+                <option value="اللغة العربية 📚">اللغة العربية 📚</option>
+                <option value="اللغة الإنجليزية 🇬🇧">اللغة الإنجليزية 🇬🇧</option>
+                <option value="الرياضيات 🔢">الرياضيات 🔢</option>
+                <option value="العلوم 🧪">العلوم 🧪</option>
+                <option value="الدراسات الاجتماعية 🌍">الدراسات الاجتماعية 🌍</option>
+                <option value="الفيزياء ⚡">الفيزياء ⚡</option>
+                <option value="الكيمياء ⚗️">الكيمياء ⚗️</option>
+                <option value="الأحياء 🧬">الأحياء 🧬</option>
+                <option value="التاريخ 📜">التاريخ 📜</option>
+                <option value="الجغرافيا 🗺️">الجغرافيا 🗺️</option>
+                <option value="الحاسب الآلي 💻">الحاسب الآلي 💻</option>
+                {% for s in subjects %}
+                    <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+            </select>
+            {% else %}
+            <select name="grade" class="form-select mb-3" required>
+                <option value="" disabled selected>اختر صفك الدراسي (من رابعة ابتدائي)</option>
+                <option value="الرابع الابتدائي">الرابع الابتدائي</option>
+                <option value="الخامس الابتدائي">الخامس الابتدائي</option>
+                <option value="السادس الابتدائي">السادس الابتدائي</option>
+                <option value="الأول الإعدادي">الأول الإعدادي</option>
+                <option value="الثاني الإعدادي">الثاني الإعدادي</option>
+                <option value="الثالث الإعدادي">الثالث الإعدادي</option>
+                <option value="الأول الثانوي">الأول الثانوي</option>
+                <option value="الثاني الثانوي">الثاني الثانوي</option>
+                <option value="الثالث الثانوي">الثالث الثانوي</option>
+                {% for g in grades %}
+                    <option value="{{ g }}">{{ g }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+
+            <button class="btn btn-info w-100 py-2 mt-2 fw-bold text-dark">دخول المنصة 🚀</button>
+        </form>
+
+        <!-- قسم تعليمات عن المنصة -->
+        <div class="instructions-box p-3 mt-3">
+            <h6 class="fw-bold mb-2 text-white">📌 تعليمات استخدام إيدو ميدو هب:</h6>
+            <ul class="mb-0 ps-3">
+                <li>تأكد من السماح بالوصول للميكروفون والكاميرا عند الدخول.</li>
+                <li>تتوفر سبورة تفاعلية ممتازة للرسم وتوضيح الشرح.</li>
+                <li>يرجى التزام الهدوء واحترام قواعد الفصل الافتراضي.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- الفوتر وحقوق الملكية -->
+    <footer class="mt-4 text-center">
+        جميع الحقوق محفوظة لدى <strong>EduMido Hub</strong> © 2026 🛡️
+    </footer>
+
+</body>
+</html>
