@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>الفصل الافتراضي - منصة MIDO</title>
+    <!-- Jitsi API & Socket.io -->
+    <script src="https://meet.jit.si/external_api.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <!-- مكتبة PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background-color: #121212;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        #jitsi-box {
+            width: 100%;
+            height: 180px;
+            background-color: #000;
+            flex-shrink: 0;
+            border-bottom: 2px solid #333;
+        }
+
+        #board-box {
+            flex: 1;
+            width: 100%;
+            position: relative;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+
+        /* طبقة الـ PDF والصور (خلفية) */
+        #bgCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* طبقة الرسم بالشظايا والقلم (أمامية) */
+        #drawCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        .teacher-tools {
+            position: absolute;
+            bottom: 10px;
+            right: 50%;
+            transform: translateX(50%);
+            background: rgba(18, 18, 18, 0.95);
+            padding: 8px 12px;
+            border-radius: 25px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            max-width: 98%;
+            overflow-x: auto;
+        }
+
+        .tool-btn, .tool-select {
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            cursor: pointer;
+            white-space: nowrap;
+            outline: none;
+        }
+
+        .tool-btn.active {
+            background: #16a34a;
+        }
+
+        .color-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .color-picker {
+            width: 26px;
+            height: 26px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="jitsi-box"></div>
+
+    <div id="board-box">
+        <!-- طبقتين Canvas منعاً لمسح الـ PDF -->
+        <canvas id="bgCanvas"></canvas>
+        <canvas id="drawCanvas"></canvas>
+
+        {% if user.role == 'teacher' %}
+        <div class="teacher-tools">
+            <!-- التحكم بالنمط -->
+            <button id="penModeBtn" class="tool-btn active" onclick="setMode('draw')">✏️ قلم</button>
+            <button id="moveModeBtn" class="tool-btn" onclick="setMode('move')">✋ تحريك</button>
+
+            <!-- دوائر الألوان -->
+            <div class="color-dot" style="background: #000000;" onclick="selectColor('#000000')"></div>
+            <div class="color-dot" style="background: #dc2626;" onclick="selectColor('#dc2626')"></div>
+            <div class="color-dot" style="background: #2563eb;" onclick="selectColor('#2563eb')"></div>
+            <div class="color-dot" style="background: #16a34a;" onclick="selectColor('#16a34a')"></div>
+            <input type="color" id="colorPicker" class="color-picker" value="#000000" oninput="selectColor(this.value)">
+
+            <!-- الممحاة -->
+            <button id="eraserBtn" class="tool-btn" onclick="setEraser()">🧽 ممحاة</button>
+
+            <!-- سُمك القلم -->
+            <select id="lineWidthSelect" class="tool-select" onchange="changeLineWidth(this.value)">
+                <option value="2">سن رفيع (2px)</option>
+                <option value="5" selected>سن متوسط (5px)</option>
+                <option value="10">سن عريض (10px)</option>
+            </select>
+
+            <!-- رفع الصور والـ PDF -->
+            <button class="tool-btn" onclick="document.getElementById('imageInput').click()">🖼️ صورة</button>
+            <input type="file" id="imageInput" accept="image/*" style="display:none;" onchange="uploadImage(event)">
+
+            <button class="tool-btn" onclick="document.getElementById('pdfInput').click()">📄 PDF</button>
+            <input type="file" id="pdfInput" accept="application/pdf" style="display:none;" onchange="uploadPDF(event)">
+
+            <!-- تقليب الصفحات -->
+            <button class="tool-btn" style="background:#475569;" onclick="prevPage()">⬅️</button>
+            <button class="tool-btn" style="background:#475569;" onclick="nextPage()">➡️</button>
+
+            <!-- مسح الكل لدى المعلم والطالب -->
+            <button class="tool-btn" style="background:#dc2626;" onclick="clearAll()">🗑️ مسح الكل</button>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+        const roomId = "{{ room_id }}" || "1";
+        const userName = "{{ user.name if user else 'مستخدم' }}";
+        const isTeacher = "{{ user.role }}" === "teacher";
+
+        // 1. Jitsi Setup
+        window.onload = function() {
+            const options = {
+                roomName: "EduClass_Secured_Room_MIDO_" + roomId,
+                width: '100%',
+                height: '100%',
+                parentNode: document.querySelector('#jitsi-box'),
+                userInfo: { displayName: userName },
+                configOverwrite: {
+                    disableDeepLinking: true,
+                    prejoinPageEnabled: false,
+                    enableLobby: false,
+                    startWithAudioMuted: false,
+                    startWithVideoMuted: false
+                },
+                interfaceConfigOverwrite: {
+                    TOOLBAR_BUTTONS: ['microphone', 'camera', 'desktop', 'hangup'],
+                    SHOW_JITSI_WATERMARK: false,
+                    MOBILE_APP_PROMO: false
+                }
+            };
+            new JitsiMeetExternalAPI("meet.jit.si", options);
+        };
+
+        // 2. إعداد أجهزة الرسم والسوكيت
+        const socket = io();
+        socket.emit('join', { room: roomId }); // الانضمام لغرفة الحصة
+
+        const bgCanvas = document.getElementById('bgCanvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        const drawCanvas = document.getElementById('drawCanvas');
+        const drawCtx = drawCanvas.getContext('2d');
+
+        let currentMode = 'draw';
+        let isEraser = false;
+        let drawing = false;
+        let currentColor = "#000000";
+        let currentLineWidth = 5;
+
+        let currentPdf = null;
+        let currentPageNum = 1;
+
+        function resizeCanvases() {
+            const width = drawCanvas.parentElement.clientWidth;
+            const height = drawCanvas.parentElement.clientHeight;
+
+            bgCanvas.width = width;
+            bgCanvas.height = height;
+            drawCanvas.width = width;
+            drawCanvas.height = height;
+        }
+        window.addEventListener('resize', resizeCanvases);
+        resizeCanvases();
+
+        function setMode(mode) {
+            currentMode = mode;
+            isEraser = false;
+            if (document.getElementById('penModeBtn')) {
+                document.getElementById('penModeBtn').classList.toggle('active', mode === 'draw');
+                document.getElementById('moveModeBtn').classList.toggle('active', mode === 'move');
+                document.getElementById('eraserBtn').classList.remove('active');
+            }
+        }
+
+        function selectColor(color) {
+            setMode('draw');
+            currentColor = color;
+        }
+
+        function setEraser() {
+            currentMode = 'draw';
+            isEraser = true;
+            if (document.getElementById('eraserBtn')) {
+                document.getElementById('eraserBtn').classList.add('active');
+                document.getElementById('penModeBtn').classList.remove('active');
+                document.getElementById('moveModeBtn').classList.remove('active');
+            }
+        }
+
+        function changeLineWidth(val) {
+            currentLineWidth = parseInt(val);
+        }
+
+        if (isTeacher) {
+            function getPos(e) {
+                const rect = drawCanvas.getBoundingClientRect();
+                const touch = e.touches ? e.touches[0] : e;
+                return {
+                    x: (touch.clientX - rect.left) / drawCanvas.width,
+                    y: (touch.clientY - rect.top) / drawCanvas.height
+                };
+            }
+
+            function startDraw(e) {
+                if (currentMode !== 'draw') return;
+                drawing = true;
+                const pos = getPos(e);
+
+                drawCtx.beginPath();
+                drawCtx.moveTo(pos.x * drawCanvas.width, pos.y * drawCanvas.height);
+
+                socket.emit('draw_event', {
+                    room: roomId,
+                    x: pos.x,
+                    y: pos.y,
+                    color: currentColor,
+                    lineWidth: currentLineWidth,
+                    isEraser: isEraser,
+                    type: 'start'
+                });
+            }
+
+            function draw(e) {
+                if (!drawing || currentMode !== 'draw') return;
+                const pos = getPos(e);
+
+                if (isEraser) {
+                    drawCtx.globalCompositeOperation = 'destination-out';
+                    drawCtx.lineWidth = currentLineWidth * 4;
+                } else {
+                    drawCtx.globalCompositeOperation = 'source-over';
+                    drawCtx.strokeStyle = currentColor;
+                    drawCtx.lineWidth = currentLineWidth;
+                }
+
+                drawCtx.lineCap = 'round';
+                drawCtx.lineTo(pos.x * drawCanvas.width, pos.y * drawCanvas.height);
+                drawCtx.stroke();
+
+                socket.emit('draw_event', {
+                    room: roomId,
+                    x: pos.x,
+                    y: pos.y,
+                    color: currentColor,
+                    lineWidth: currentLineWidth,
+                    isEraser: isEraser,
+                    type: 'draw'
+                });
+            }
+
+            function stopDraw() {
+                if (drawing) {
+                    drawing = false;
+                    drawCtx.beginPath();
+                    socket.emit('draw_event', { room: roomId, type: 'stop' });
+                }
+            }
+
+            drawCanvas.addEventListener('mousedown', startDraw);
+            drawCanvas.addEventListener('mousemove', draw);
+            drawCanvas.addEventListener('mouseup', stopDraw);
+
+            drawCanvas.addEventListener('touchstart', startDraw);
+            drawCanvas.addEventListener('touchmove', draw);
+            drawCanvas.addEventListener('touchend', stopDraw);
+        }
+
+        // 3. استقبال الرسم المباشر عند الطالب والتطبيق
+        socket.on('draw_event', (data) => {
+            if (data.type === 'start') {
+                drawCtx.beginPath();
+                if (data.isEraser) {
+                    drawCtx.globalCompositeOperation = 'destination-out';
+                    drawCtx.lineWidth = (data.lineWidth || 5) * 4;
+                } else {
+                    drawCtx.globalCompositeOperation = 'source-over';
+                    drawCtx.strokeStyle = data.color;
+                    drawCtx.lineWidth = data.lineWidth || 5;
+                }
+                drawCtx.lineCap = 'round';
+                drawCtx.moveTo(data.x * drawCanvas.width, data.y * drawCanvas.height);
+            } else if (data.type === 'draw') {
+                if (data.isEraser) {
+                    drawCtx.globalCompositeOperation = 'destination-out';
+                    drawCtx.lineWidth = (data.lineWidth || 5) * 4;
+                } else {
+                    drawCtx.globalCompositeOperation = 'source-over';
+                    drawCtx.strokeStyle = data.color;
+                    drawCtx.lineWidth = data.lineWidth || 5;
+                }
+                drawCtx.lineCap = 'round';
+                drawCtx.lineTo(data.x * drawCanvas.width, data.y * drawCanvas.height);
+                drawCtx.stroke();
+            } else if (data.type === 'stop') {
+                drawCtx.beginPath();
+            }
+        });
+
+        // 📄 رفع وقراءة الـ PDF وعرضه للطالب فوراً
+        function uploadPDF(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const typedarray = new Uint8Array(e.target.result);
+                pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                    currentPdf = pdf;
+                    currentPageNum = 1;
+                    renderPdfPage(currentPageNum);
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderPdfPage(num) {
+            if (!currentPdf) return;
+            currentPdf.getPage(num).then(function(page) {
+                const viewport = page.getViewport({ scale: 1.5 });
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.height = viewport.height;
+                tempCanvas.width = viewport.width;
+
+                page.render({ canvasContext: tempCtx, viewport: viewport }).promise.then(function() {
+                    const imgData = tempCanvas.toDataURL('image/jpeg', 0.7);
+                    drawBackground(imgData);
+                    drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+                    socket.emit('share_image', { room: roomId, image: imgData });
+                });
+            });
+        }
+
+        function prevPage() {
+            if (currentPdf && currentPageNum > 1) {
+                currentPageNum--;
+                renderPdfPage(currentPageNum);
+            }
+        }
+
+        function nextPage() {
+            if (currentPdf && currentPageNum < currentPdf.numPages) {
+                currentPageNum++;
+                renderPdfPage(currentPageNum);
+            }
+        }
+
+        function uploadImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                drawBackground(e.target.result);
+                drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+                socket.emit('share_image', { room: roomId, image: e.target.result });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function drawBackground(imgSrc) {
+            const img = new Image();
+            img.onload = function() {
+                bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+                bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
+            };
+            img.src = imgSrc;
+        }
+
+        socket.on('receive_image', (data) => {
+            drawBackground(data.image);
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        });
+
+        function clearAll() {
+            currentPdf = null;
+            currentPageNum = 1;
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            socket.emit('clear_canvas', { room: roomId });
+        }
+
+        socket.on('clear_canvas', () => {
+            currentPdf = null;
+            currentPageNum = 1;
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        });
+    </script>
+</body>
+</html>
